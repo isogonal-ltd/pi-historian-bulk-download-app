@@ -1,9 +1,9 @@
 # PI Historian Bulk Download Application #
 
-Isogonal    
+[Isogonal](https://isogonal.co.nz)
 contact@isogonal.co.nz
 
-This is a community project, and not provided or supported by OSISoft in any way.
+This is a community project, and not provided or supported by OSISoft in any way. It was developed to download data for an internal project and is open-sourced in the hope it will be useful to someone else. Please get in touch at the email above if you have any questions or would like some assisstance.
 
 ## Overview
 
