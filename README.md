@@ -18,7 +18,6 @@ Four use cases:
 
 Features:
 
-
 * Downloads data for an arbitrary number of tags/attributes with an arbitrary time range per tag/attribute.
 * Utilizes a configurable number of asynchronous calls in parallel, with one call per page per tag
 * Utilizes a configurable page size, and handles joining pages together internally
@@ -31,10 +30,12 @@ Features:
 
 Further Features:
 
-
 * Asking for interpolated data from time ranges with no recorded values is really slow on the PI Server, so if interpolated values are requested, the application conducts an initial query to retrieve the first N recorded values for the tag after the requested start date, and starts the interpolated query from the first data date onwards, not the date requested in the input file.
 * Does not use a bulk RPC call, as it is harder to gracefully recover from timeout and corrupted archive exceptions using this approach.
 
+Notes:
+
+* Only downloads data for an attribute if the attribute is backed by a PIPoint.
 
 Has been used to download 100,000+ tags and 50+ GB of data in a single run with download speeds of 2.2 MB/sec over a VPN connection.
 
@@ -64,16 +65,14 @@ List attributes in PI AF
 
 ________________
 
-
 Retrieve data from PI
+
 Requesting data from PI is based around a query file, used as an input to the program. The query file lists one tag or AF attribute per line, with a start date, an end date, and an optional interpolation period. This file could look like:
 
 ```
 AAA.AAAA.AAA_AA_1.AA,1998-12-29T00:00:00,2019-05-15T00:00:00,600
 AAA.AAAA.AAA_AA_2.AA,1998-12-29T00:00:00,2019-05-15T00:00:00,600
 AAA.AAAA.AAA_AA_3.AA,1998-12-29T00:00:00,2019-05-15T00:00:00,600
-....
-....
 ```
 
 Where the columns are `<tag string>,<date start>,<date end>,<interpolation interval in seconds>`. 
