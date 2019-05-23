@@ -26,7 +26,7 @@ Features:
 * Automatically handles exceptions and retries failed calls
 * One tag throwing an exception (e.g. due to a corrupt archive) does not affect download of other tags
 * All actions log information to a configurable file, as well as to the console or the GUI
-* When given a User Interrupt exists cleanly at the conclusion of the tags currently in progress
+* When given a user interrupt signal, exits cleanly at the conclusion of the tags currently in progress, which may take a few seconds to a few minutes depending on the time range and tag frequency. 
 
 Further Features:
 
