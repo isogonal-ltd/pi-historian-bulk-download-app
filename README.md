@@ -18,24 +18,24 @@ Four use cases:
 
 Features:
 
-* Downloads data for an arbitrary number of tags/attributes with an arbitrary time range per tag/attribute.
-* Utilizes a configurable number of asynchronous calls in parallel, with one call per page per tag
+* Utilizes a configurable number of parallel calls, one call per page per tag
 * Utilizes a configurable page size, and handles joining pages together internally
 * No size limit for individual tags
-* Writes data for each tag to a separate file. Alternatively, split output files into subfolders by year, month, or day
-* Automatically handles exceptions and retries failed calls up to 100 retries. 
+* Writes data for each tag to a separate file
+* Alternatively, split output files into subfolders by year, month, or day
+* Automatically handles exceptions and retries failed calls
 * One tag throwing an exception (e.g. due to a corrupt archive) does not affect download of other tags
 * All actions log information to a configurable file, as well as to the console or the GUI.
-
 
 Further Features:
 
 * Asking for interpolated data from time ranges with no recorded values is really slow on the PI Server, so if interpolated values are requested, the application conducts an initial query to retrieve the first N recorded values for the tag after the requested start date, and starts the interpolated query from the first data date onwards, not the date requested in the input file.
-* Does not use a bulk RPC call, as it is harder to gracefully recover from timeout and corrupted archive exceptions using this approach.
+* Does not use a single bulk RPC call, as it is harder to gracefully recover from timeout and corrupted archive exceptions using this approach.
 
 Notes:
 
 * Only downloads data for an attribute if the attribute is backed by a PIPoint.
+* Correctly handles all of the issues described in [this pisquare post](https://pisquare.osisoft.com/thread/40099-deep-dive-explaining-custom-getlargerecordedvalues-as-a-workaround-to-arcmaxcollect) except the pathological case.
 
 ## Command line interface
 
