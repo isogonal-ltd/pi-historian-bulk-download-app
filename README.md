@@ -7,14 +7,14 @@ This is a community project, and not provided or supported by OSISoft in any way
 
 ## Overview
 
-If you want to download 100,000+ tags and 50+ GB of data from PI Historian over a VPN connection, in one run, this application will support it. It can cope with recorded values, interpolated values, is fairly fault-tolerant, and has a GUI.
+If you want to download 100,000+ tags/attributes and 50+ GB of data from PI Historian over a VPN connection, in one run, this application will support it. It can cope with recorded values, interpolated values, is fairly fault-tolerant, and has a GUI.
 
 Four use cases:
 
 * List all tags in PI Archive
 * List all attributes in PI AF
-* Retrieve recorded values for an arbitrary number of tags for an arbitrary time range per tag
-* Retrieve interpolated values for an arbitrary number of tags for an arbitrary time range per tag
+* Retrieve recorded values for an arbitrary number of tags for an arbitrary time range per tag/attribute
+* Retrieve interpolated values for an arbitrary number of tags for an arbitrary time range per tag/attribute
 
 Features:
 
@@ -71,7 +71,7 @@ AAA.AAAA.AAA_AA_2.AA,1998-12-29T00:00:00,2019-05-15T00:00:00,600
 AAA.AAAA.AAA_AA_3.AA,1998-12-29T00:00:00,2019-05-15T00:00:00,600
 ```
 
-Where the columns are `<tag string>,<date start>,<date end>,<interpolation interval in seconds>`. 
+Where the columns are `<tag string>,<date start>,<date end>,<interpolation interval in seconds>`. **This input file must not contain rogue spaces before or after the comma separators** or the application will fail to find the PIPoint/attribute. The date must also be formatted exactly as shown.
 
 There are four types of input file - recorded values or interpolated values for either Tags or Asset Framework Attributes. The columns in each input file are below (to come when I transfer this into a Markdown table).
 
