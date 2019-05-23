@@ -1,14 +1,13 @@
 # PI Historian Bulk Download Application #
 
-[Isogonal](https://isogonal.co.nz)
-
+[Isogonal](https://isogonal.co.nz)  
 contact@isogonal.co.nz
 
 This is a community project, and not provided or supported by OSISoft in any way. It was developed to download data for an internal project and is open-sourced in the hope it will be useful to someone else. Please get in touch at the email above if you have any questions or would like some assisstance.
 
 ## Overview
 
-If you want to download 100,000+ tags and 50+ GB of data from PI Historian over a VPN connection, in a single operation, this application will support it. It can cope with recorded values, interpolated values, is fairly fault-tolerant, and has a GUI.
+If you want to download 100,000+ tags and 50+ GB of data from PI Historian over a VPN connection, in one run, this application will support it. It can cope with recorded values, interpolated values, is fairly fault-tolerant, and has a GUI.
 
 Four use cases:
 
@@ -19,9 +18,9 @@ Four use cases:
 
 Features:
 
-* Utilizes a configurable number of threads and makes one call per tag per page
-* Utilizes a configurable page size, and handles joining pages together internally
 * No size limit for individual tags
+* Utilizes a configurable number of threads and makes one RPC call per tag per page
+* Utilizes a configurable page size, and handles joining pages together internally
 * Writes data for each tag to a separate file
 * Alternatively, split output files into subfolders by year, month, or day
 * Automatically handles exceptions and retries failed calls
@@ -38,6 +37,7 @@ Notes:
 
 * Only downloads data for an attribute if the attribute is backed by a PIPoint.
 * Correctly handles all of the issues described in [this pisquare post](https://pisquare.osisoft.com/thread/40099-deep-dive-explaining-custom-getlargerecordedvalues-as-a-workaround-to-arcmaxcollect) except the pathological case where there are more points at the exact same timestamp than the page size, which is highly unlikely.
+* This can probably put enough load on a PI Server to negatively impact other things the server should be doing. Use with care. 
 
 ## Command line interface
 
@@ -139,4 +139,4 @@ RetrieveTagData.exe ^
 
 ## GUI
 
-To come once proprietary information stripped from screenshots
+To come once proprietary information stripped from screenshots. But it basically provides a GUI with all the command line options above to assist those not as familiar with running things at the command line.
