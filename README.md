@@ -2,12 +2,14 @@
 
 Isogonal    
 contact@isogonal.co.nz
-________________
 
 This is a community project, and not provided or supported by OSISoft in any way.
+
 ________________
 
 ## Overview
+
+If you want to download 100,000+ tags and 50+ GB of data from PI Historian over a VPN connection, in a single operation, this application will support it. It can cope with recorded values, interpolated values, is fairly fault-tolerant, and has a GUI.
 
 Four use cases:
 
@@ -36,8 +38,6 @@ Further Features:
 Notes:
 
 * Only downloads data for an attribute if the attribute is backed by a PIPoint.
-
-Has been used to download 100,000+ tags and 50+ GB of data in a single run with download speeds of 2.2 MB/sec over a VPN connection.
 
 ________________
 
