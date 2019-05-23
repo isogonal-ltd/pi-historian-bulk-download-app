@@ -19,24 +19,25 @@ Four use cases:
 
 Features:
 
-* Utilizes a configurable number of parallel calls, one call per page per tag
+* Utilizes a configurable number of threads and makes one call per tag per page
 * Utilizes a configurable page size, and handles joining pages together internally
 * No size limit for individual tags
 * Writes data for each tag to a separate file
 * Alternatively, split output files into subfolders by year, month, or day
 * Automatically handles exceptions and retries failed calls
 * One tag throwing an exception (e.g. due to a corrupt archive) does not affect download of other tags
-* All actions log information to a configurable file, as well as to the console or the GUI.
+* All actions log information to a configurable file, as well as to the console or the GUI
+* When given a User Interrupt exists cleanly at the conclusion of the tags currently in progress
 
 Further Features:
 
-* Asking for interpolated data from time ranges with no recorded values is really slow on the PI Server, so if interpolated values are requested, the application conducts an initial query to retrieve the first N recorded values for the tag after the requested start date, and starts the interpolated query from the first data date onwards, not the date requested in the input file.
+* Asking for interpolated data from time ranges with no recorded values is really slow on the PI Server, so if interpolated values are requested, the application conducts an initial query to retrieve the first few recorded values for the tag after the requested start date, and starts the interpolated query from the first data date onwards, not the date requested in the input file.
 * Does not use a single bulk RPC call, as it is harder to gracefully recover from timeout and corrupted archive exceptions using this approach.
 
 Notes:
 
 * Only downloads data for an attribute if the attribute is backed by a PIPoint.
-* Correctly handles all of the issues described in [this pisquare post](https://pisquare.osisoft.com/thread/40099-deep-dive-explaining-custom-getlargerecordedvalues-as-a-workaround-to-arcmaxcollect) except the pathological case.
+* Correctly handles all of the issues described in [this pisquare post](https://pisquare.osisoft.com/thread/40099-deep-dive-explaining-custom-getlargerecordedvalues-as-a-workaround-to-arcmaxcollect) except the pathological case where there are more points at the exact same timestamp than the page size, which is highly unlikely.
 
 ## Command line interface
 
@@ -72,9 +73,9 @@ AAA.AAAA.AAA_AA_3.AA,1998-12-29T00:00:00,2019-05-15T00:00:00,600
 
 Where the columns are `<tag string>,<date start>,<date end>,<interpolation interval in seconds>`. 
 
-There are four types of input file - recorded values or interpolated values for either Tags or Asset Framework Attributes. The columns in each input file are given in the tables below.
+There are four types of input file - recorded values or interpolated values for either Tags or Asset Framework Attributes. The columns in each input file are below (to come when I transfer this into a Markdown table).
 
-The command line interface for each of the four query types is shown below in Table 6. The command-line argument meanings are given in Table 7 on the following page.
+The command line interface for each of the four query types is shown below in Table 6. The command-line argument descriptions are given below (to come when I transfer this into a Markdown table). But generally speaking there is an input file containing the requested tags and time ranges, an output directory, a log file, the PI server and database details, the number of parallel threads, whether to bin output files into year/month/day folders, the number of contiguous years to bin together, and the page size. 
 
 ```
 RetrieveTagData.exe ^
@@ -85,7 +86,7 @@ RetrieveTagData.exe ^
   -a "<PI Data Archive server>" ^
   -b "<PI Asset Framework server>" ^
   -d "<PI Asset Framework database name>" ^
-  -p "10" ^
+  -p "4" ^
   -t "none" ^
   -y "5" ^
   -s "200000"
@@ -100,7 +101,7 @@ RetrieveTagData.exe ^
   -a "<PI Data Archive server>" ^
   -b "<PI Asset Framework server>" ^
   -d "<PI Asset Framework database name>" ^
-  -p "5" ^
+  -p "4" ^
   -t "none" ^
   -y "5" ^
   -s "5000"
@@ -115,7 +116,7 @@ RetrieveTagData.exe ^
   -a "<PI Data Archive server>" ^
   -b "<PI Asset Framework server>" ^
   -d "<PI Asset Framework database name>" ^
-  -p "10" ^
+  -p "4" ^
   -t "none" ^
   -y "5" ^
   -s "200000"
@@ -130,7 +131,7 @@ RetrieveTagData.exe ^
   -a "<PI Data Archive server>" ^
   -b "<PI Asset Framework server>" ^
   -d "<PI Asset Framework database name>" ^
-  -p "5" ^
+  -p "4" ^
   -t "none" ^
   -y "5" ^
   -s "5000"
