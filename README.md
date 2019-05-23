@@ -5,8 +5,6 @@ contact@isogonal.co.nz
 
 This is a community project, and not provided or supported by OSISoft in any way.
 
-________________
-
 ## Overview
 
 If you want to download 100,000+ tags and 50+ GB of data from PI Historian over a VPN connection, in a single operation, this application will support it. It can cope with recorded values, interpolated values, is fairly fault-tolerant, and has a GUI.
@@ -39,11 +37,9 @@ Notes:
 
 * Only downloads data for an attribute if the attribute is backed by a PIPoint.
 
-________________
-
 ## Command line interface
 
-List tags in PI
+#### List tags in PI
 
 ```
 .\Release\ListTags\ListTags.exe ^
@@ -52,7 +48,7 @@ List tags in PI
   -a "<PI Data Archive server>"
 ```
 
-List attributes in PI AF
+#### List attributes in PI AF
 
 ```
 .\Release\ListAttributes\ListAttributes.exe ^
@@ -63,9 +59,7 @@ List attributes in PI AF
   -d "<PI Asset Framework database name>"
 ```
 
-________________
-
-Retrieve data from PI
+#### Retrieve data from PI
 
 Requesting data from PI is based around a query file, used as an input to the program. The query file lists one tag or AF attribute per line, with a start date, an end date, and an optional interpolation period. This file could look like:
 
