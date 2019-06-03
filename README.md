@@ -139,4 +139,4 @@ RetrieveTagData.exe ^
 
 ## GUI
 
-To come once proprietary information stripped from screenshots. But it basically provides a GUI with all the command line options above to assist those not as familiar with running things at the command line.
+Can be provided on request. Basically provides a GUI with all the command line options above to assist those not as familiar with running things at the command line.
