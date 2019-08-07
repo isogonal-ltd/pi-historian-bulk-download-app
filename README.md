@@ -5,6 +5,8 @@ contact@isogonal.co.nz
 
 This is a community project, and not provided or supported by OSISoft in any way. It was developed to download data for an internal project and is open-sourced in the hope it will be useful to someone else. Please get in touch at the email above if you have any questions or would like some assisstance.
 
+The compiled application and an installer can be found at https://drive.google.com/drive/folders/1JmQUtwVB1kHkif1wIggz6TNNXNrWrl4z?usp=sharing 
+
 ## Overview
 
 If you want to download 100,000+ tags/attributes and 50+ GB of data from PI Historian over a VPN connection, in one run, this application will support it. It can cope with recorded values, interpolated values, is fairly fault-tolerant, and has a GUI.
