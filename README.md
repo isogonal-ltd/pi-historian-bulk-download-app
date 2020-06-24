@@ -79,7 +79,7 @@ There are four types of input file - recorded values or interpolated values for 
 
 The command line interface for each of the four query types is shown below in Table 6. The command-line argument descriptions are given below (to come when I transfer this into a Markdown table). But generally speaking there is an input file containing the requested tags and time ranges, an output directory, a log file, the PI server and database details, the number of parallel threads, whether to bin output files into year/month/day folders, the number of contiguous years to bin together, and the page size. 
 
-```
+```powershell
 RetrieveTagData.exe ^
   -i "RecordedTag" ^
   -f ".\Examples\RecordedTag\CircuitBreakerPositionRecordedTagQuery.csv" ^
@@ -94,7 +94,7 @@ RetrieveTagData.exe ^
   -s "200000"
 ```
 
-```
+```powershell
 RetrieveTagData.exe ^
   -i "InterpolatedTag" ^
   -f ".\Examples\InterpolatedTag\CircuitBreakerCurrentInterpolatedTagQuery.csv" ^
@@ -109,7 +109,7 @@ RetrieveTagData.exe ^
   -s "5000"
 ```
 
-```
+```powershell
 RetrieveTagData.exe ^
   -i "RecordedAttribute" ^
   -f ".\Examples\RecordedAttribute\CircuitBreakerPositionRecordedAttributeQuery.csv" ^
@@ -124,7 +124,7 @@ RetrieveTagData.exe ^
   -s "200000"
 ```  
 
-```
+```powershell
 RetrieveTagData.exe ^
   -i "InterpolatedAttribute" ^
   -f ".\Examples\InterpolatedAttribute\CircuitBreakerCurrentInterpolatedAttributeQuery.csv" ^
