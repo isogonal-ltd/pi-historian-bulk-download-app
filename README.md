@@ -9,7 +9,7 @@ The compiled application and an installer can be found at https://drive.google.c
 
 ## Overview
 
-If you want to download 100,000+ tags/attributes and 50+ GB of data from PI Historian over a VPN connection, in one run, this application will support it. It can cope with recorded values, interpolated values, is fairly fault-tolerant, and has a GUI.
+If you want to download 100,000+ tags/attributes and 50+ GB of data from PI Historian over a VPN connection, in one run, on a laptop, this application will support it. It can cope with recorded values, interpolated values, is fairly fault-tolerant, and has a GUI.
 
 Four use cases:
 
@@ -45,8 +45,8 @@ Notes:
 
 #### List tags in PI
 
-```
-.\Release\ListTags\ListTags.exe ^
+```powershell
+ListTags.exe ^
   -o ".\Examples\ListTags\Tags.csv" ^
   -l ".\Examples\ListTags\Tags.log" ^
   -a "<PI Data Archive server>"
@@ -54,8 +54,8 @@ Notes:
 
 #### List attributes in PI AF
 
-```
-.\Release\ListAttributes\ListAttributes.exe ^
+```powershell
+ListAttributes.exe ^
   -o ".\Examples\ListAttributes\Attributes.csv" ^
   -l ".\Examples\ListAttributes\Attributes.log" ^
   -a "<PI Data Archive server>" ^
