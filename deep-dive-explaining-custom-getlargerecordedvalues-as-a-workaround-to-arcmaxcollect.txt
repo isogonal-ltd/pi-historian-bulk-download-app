@@ -1,0 +1,399 @@
+Deep Dive: Explaining custom GetLargeRecordedValues as a workaround to ArcMaxCollect
+Discussion created by rdavin Employee on May 14, 2019
+
+Subtitle: Or what to do when you hit the ArcMaxCollect limit
+
+A deep dive as to why a custom method like GetLargeRecordedValues might help developers out of a jam. While this blog is targeted specifically to the Developer Community, we briefly touch upon options for non-developers.
+
+Scenario: it’s Monday morning and your boss gives you an urgent task due by Friday noon. An audit is under way and you must dump out all values for a PIPoint named HUGE_TAG for the past year. You know HUGE_TAG has 1-second polling and compression that archives roughly 1/3 of the incoming values. When you try to fetch all the values for HUGE_TAG for the past year, you receive an exception code 11128 stating that too many values were requested. You quickly discover that the limit on values in a single request is controlled by the tuning parameter ArcMaxCollect. What can you do?
+
+Alrighty then, let’s start out with some basic math. If HUGE_TAG is on 1-second polling, you can expect 43,200 values in a 24-hour day. This ends up being a whopping 15,768,200 uncompressed values for a 365-day year. Thanks to compression, you are archiving roughly 1/3 of these, which would be 5,256,200 compressed values (give or take a few hundred thousand). For simplicity of argument, let’s just call it 5 million even. Thus, the task at hand boils down to you needing to retrieve 5 million values for one tag on the PI Data Archive. Yet the default value for ArcMaxCollect is 1.5 million values in a single call. This explains why you received the 11128 exception that stopped you dead in your tracks.
+
+You have a deadline to meet come hell-or-highwater, so your first inclination might be to bump up ArcMaxCollect to something much higher, maybe 6 or 7 million. PLEASE DO NOT CHANGE THIS. It’s quite tempting, but it can introduce a host of other problems to the PI Data Archive. I refer you to the KB article below:
+
+KB00367 Changing the ArcMaxCollect parameter: What are the ramifications or possible issues?
+
+Well then, what else can you do then get past this? If you aren’t a developer, one thing to try is to break the large yearly call up into smaller time ranges, perhaps monthly. If it’s fair to assume a relatively even distribution of values across the year, then 12 months should hopefully return less than half-a-million compressed values per call, each falling below ArcMaxCollect. Of course, this means you must take time to make 12 calls, and later somehow “stitch” the results of those 12 calls into 1 large result set.
+
+If you are frustrated at the amount of time and effort being spent, there is another option for non-developers: a PI Integrator. This is a separate product with its own licensing. If your boss is anything like some of mine back when I was a customer, expect to be grilled on why you would need this new product. Questions that I would get hit with were:
+
+    How much does this cost?
+    Why do you need this?
+    How frequently will we use this?
+    What else can we use this for?
+
+Those really aren’t unreasonable questions and indicate more of a boss who wants to justify a sound purchase rather than someone who just likes to say “No”. But if time and money (mostly money) is a concern with your boss, then you already know what the answer is going to be. Since your salary is currently accounted for, your boss may consider your time as “free” (as in already included in the department overhead). In which case, you can bet that your boss would rather have you issue 12 monthly data dumps and stitch them together, even if it takes you all day. (Really for the task at hand, it should take well less than an hour so let’s save the melodramatics for when we really need it.)
+
+If at this point you still want to take the easy way out and change ArcMaxCollect, I once again emphatically state DO NOT CHANGE THIS. Whatever time you think you are saving yourself will come back to haunt you many times over.
+
+If you aren’t a developer, there’s little else we can recommend for you. If you were hesitant to purchase PI Integrator, which you would own and could help you with future tasks, then surely you agree that hiring a contractor to perform this task once for you is not going to be money well spent. Therefore, at this point in the blog, if you are not a developer, you may stop reading as I have nothing else to offer you.
+
+… okay, I am assuming for the remainder of this blog that you are a developer who is totally eager and prepared for our content to take a deeper technical dive, so buckle up coders ...
+
+You may have been directed here from the blog of GetLargeRecordedValues – working around ArcMaxCollect. The good news is you have come to the right place. The bad news is that this workaround is not an official release, and in the purest sense this workaround is rightfully referred to as a hack (but a nice or friendly hack in the generous sense of the word).
+
+The source code for the original GetLargeRecordedValues is no longer available on GitHub but we do offer some of the code below as free and open-source software (FOSS). Which brings us to the inescapable topic of licensing. All code snippets in this thread adhere to the following:
+
+ 
+Cautions
+
+If you just glossed over the license, let me be more direct: this code is not supported by OSIsoft, nor has it ever been supported by OSIsoft. It has not been through rigorous testing. It will not be updated with future releases of AF SDK. It is not officially endorsed by any OSIsoft Product Team. If you use this code, the burden is on you to make sure it works correctly for your needs.
+
+To be blunt: if you use this code, you are on your own.
+
+If this makes you hesitant to use such code, then GREAT. You should not blindly use every sample bit of code you see. A healthy bit of skepticism is a good thing. So why use it then? Because it does work for some people with a very specific business need, operating under within a given environment. For such people, they can use this code to get past the ArcMaxCollect limitation and may retrieve many millions of values for one PIPoint. If you find yourself with a similar problem, and similar environment, then perhaps the code below is a good fit for you as well, all due skepticism aside.
+
+The way to address any skepticism is to carefully review what the code does, and honestly evaluate whether it is a proper fit for your needs. My job here is not to throw toss some code in your lap. Rather it’s my duty to explain and educate what this code does, how it works, and why it solves a particular problem. The decision of whether this is a good fit for your needs is entirely on your shoulders.
+
+ArcMaxCollect is there to protect you
+
+You may be frustrated at hitting the ArcMaxCollect brick wall, but please understand that it’s there to protect you. Seriously, do you really want to let ALL of your users have unbridled access to the data archives? Just let one of them start extracting data for the past decade, and watch your system crawl to a halt.
+
+The vast majority of data needs are for much shorter time ranges and returns far fewer values. With that in mind, 1.5 million really is a balanced setting. 99% of the time your data calls may fall below this threshold. Let’s see what we can do to help for the other 1%. Remember above when I mentioned breaking the one, huge, monolithic yearly call into 12 monthly calls? This is the best type of workaround to ArcMaxCollect. You issue several smaller calls, or what we call chunking, and then combine the chunks afterwards. By hand, the chunking-and-stitching may be tedious. But a decent developer can have the code do all the heavy lifting.
+
+Chunking is precisely what GetLargeRecordedValues does. Let’s walk through exactly what’s happening and understand why certain decisions were made, so that you have a better understanding about the strong points – and weak points (yes it has some) – of this custom workaround.
+
+Target Goal
+
+How will we know if this hack works? We could pretend that if there wasn’t an ArcMaxCollect that this workaround returns the exact same values as RecordedValues. That’s ideally what we want to happen, right? We could test this against a tag with over 1.4 million values but less than 1.5 million. If the hack returns too few or too many values, then it fails this theoretical test.
+
+In many of the rarest of edge cases, the solution presented here does work. False humility aside, it does so without any bit of brilliant or tricky coding. Rather, you will discover that the solution is effective because it accounts for other edge cases in its design. Once you know which landmines to avoid, the coding is straightforward.
+
+A Rough First Draft
+
+This problem is so common that many people have tried something similar in the past, and many of their first drafts looked very similar. Yet many of these will fail to pass our goal. Let’s look at a sample first draft to see why:
+
+    Begin with the original StartTime and EndTime.
+    The key to this workaround is using the RecordedValues call in chunks with values capped to a safe limit, e.g. 50K. Read a chunk of 50K between the StartTime and EndTime.
+    If fewer than 50K values came back, you are done and may break out of the routine. Otherwise continue.
+    For this current chunk, look at the timestamp of the last value.
+    Add 1 second to the last timestamp from the current chunk. Use this adjusted time to be the new StartTime of the next chunk.
+    Repeat again at step (2) using the adjusted StartTime.
+
+
+Sounds reasonable, right. Pity it is wrong.
+
+Wait! That was wrong?
+
+Yes. There are 2 things wrong with that initial thinking. The first should be obvious to anyone with sub-second timestamps: adding 1 whole second could skip over hundreds or thousands of events. The other shortcoming is not apparent from the logic itself but anyone with a large enough PI Server has surely felt its pain. I am referring to values with duplicate events (i.e. events with the same timestamp). You may swear that your system does not have sub-second data or duplicate events, but I have yet to see a large PI Data Archive that did not. And I have yet to find a PI admin that wasn’t astonished to hear the news.
+
+
+As a developer, my first pass usually considers the perfect-case scenario where all the data is just perfectly clean. My second pass then considers any edge cases with not-so-perfect data. In this second pass, I perform a little thought experiment asking myself questions such as:
+
+    How will this work if I have sub-second data?
+    How will this work if I have duplicate events?
+    How will this work if I have bad data?
+
+It helps too to visualize this a bit better. Let’s look at a theoretical edge case in the table below:
+
+Timestamp   Value
+2019-03-14 15:00:01 1400
+2019-03-14 15:00:03 1300
+2019-03-14 15:00:05 1375
+2019-03-14 15:00:06 1200
+2019-03-14 15:00:07 1250
+2019-03-14 15:00:09 1100
+2019-03-14 15:00:10 1001
+2019-03-14 15:00:10 1002
+2019-03-14 15:00:10 1003
+2019-03-14 15:00:12 1555
+2019-03-14 15:00:15 1777
+2019-03-14 15:00:18 1999
+2019-03-14 15:00:22 2222
+2019-03-14 15:00:28 2444
+
+The set backlit in light orange has 3 archived instances with the same timestamp (2019-03-14 15:00:10). It should not matter if the Value is duplicated or not, or if the Value is bad. If we issued a RecordedValues call for that 1 minute of data, it would return all 3 orange instances without any worry of duplicated timestamps or events, bad values, or sub-seconds. We want our custom GetLargeRecordedValues to do the same.
+
+The above may be rare in your system. And it would be an even rarer occurrence to think a chunk break could occur in the middle of a duplicated set. You could easily scoff at it and say it’s so rare you won’t bother coding around it. But it is indeed a possible edge case, so let’s tackle it now rather than later. Hence, imagine if we chunked the data up like:
+
+Timestamp   Value
+3/14/2019 15:00 1400
+3/14/2019 15:00 1300
+3/14/2019 15:00 1375
+3/14/2019 15:00 1200
+3/14/2019 15:00 1250
+3/14/2019 15:00 1100
+3/14/2019 15:00 1001
+3/14/2019 15:00 1002
+3/14/2019 15:00 1003
+3/14/2019 15:00 1555
+3/14/2019 15:00 1777
+3/14/2019 15:00 1999
+3/14/2019 15:00 2222
+3/14/2019 15:00 2444
+
+Rather than get confused on terminology such as ‘current chunk’ and ‘next chunk’, or worse, the ‘new current chunk’ and the ‘previous chunk’ or ‘The chunk formerly known as Prince’, I will distinguish them as such: the chunk above the break will be called ‘Top Chunk’ and the chunk beneath the break will be called the ‘Bottom Chunk’.  It helps to imagine that these chunks appear in the middle of your process.  Just pretend there are many chunks preceding 'Top Chunk' and many following 'Bottom Chunk'.
+
+Think about what must be done to code around this case. We’ve already mentioned that we grab the last timestamp in a chunk. That would be at 2019-03-14 15:00:10 for Value 1002 in the Top Chunk. We use that time – without adjustment - as the new StartTime for the Bottom Chunk, that way we will pick up Value 1003. But the RecordedValues call for the Bottom Chunk will also include 1001 and 1002, which was sent already in the Top Chunk.
+
+That’s easy enough to account for. Using the last timestamp in the Top Chunk, just loop backward from the bottom of the Top Chunk and count how many times that last timestamp occurs. Let’s call this SkipCount. Break out of the loop the instant the timestamp does not match. For the RecordedValues call for the Bottom Chunk, you skip over SkipCount values since these have already been sent. Fairly simple logic and easy enough to code!
+
+As we formulate the logic needed, we should see that sub-second data has no bearing since we won’t adjust the last timestamp in a chunk. On further examination, you should discover that bad data does not play a factor.  It's proper that we consider these edge cases in the overall solution, and even nicer that we can ignore it for this particular case.
+
+Let’s continue to play this out mentally. What this means is that the first time through the loop, we will skip over 0 items because there was no previous chunk. Any subsequent iterations through the loop, you are will always be skipping over at least 1 event for its next chunk because the way we have it designed - the last timestamp in the current chunk will be the first timestamp in the next chunk. Instead of returning 50,000 values to the end user, we would be returning at most 49,999 or possibly fewer if there were duplicated events at the tail end of the chunk (that is if SkipCount > 1).
+
+The nice thing is the consumer using the data stream will be oblivious to such nitpicky paging details because they will simply be iterating over an enumerable collection, simply reading one AFValue after another until nothing remains in the stream!
+
+Old-School Old-Timer
+
+One final bit of edge case I account for would be virtually impossible. I thought that if you can have 1, 2, or more duplicate events, why can’t you have 50K or more? What happens if every value in a full chunk has the same timestamp? While it’s kind of ridiculous to think there is a PI Data Archive anywhere in the world that has 50K duplicate events for the same timestamp, I am old school in that I was trained to provide some sort of break for any potential infinite loop. It’s an easy enough condition to code for, so I include this edge case too. (Note I do this because it is only a small amount of code that can prevent a theoretical infinite loop.)
+
+
+CSharp Sample Implementation
+
+public const int MinimumPageSize = 10_000;
+public const int DefaultPageSize = 50_000;
+public const int MaximumPageSize = 250_000;
+
+/// <summary>
+/// Returns an enumerable collection of compressed values for one PIPoint over the requested time range from the PI Data Archive.
+/// The final count of returned values may be greater than ArcMaxCollect.  This method would be used when you require
+/// retrieving millions of values.
+/// </summary>
+/// <param name="tag"></param>
+/// <param name="timeRange">Must be in time-ascending order</param>
+/// <param name="pageSize">Default is 50K.  Minimum is 10K.  Maximum is 250K.</param>
+/// <returns></returns>
+public static IEnumerable<AFValue> GetLargeRecordedValues(this PIPoint tag, AFTimeRange timeRange, int pageSize = 0)
+{
+    // There are several issues at play here.  For one, we want decent performance but the biggest concern
+    // is we want ALL the recorded values within a requested time range, even if the value count exceeds
+    // ArcMaxCollect. There are 3 cardinal sins to avoid:
+    //      (1) Neglecting to send an archived value within the time range,
+    //      (2) Sending a value twice (here a value is a more specific instance than just an AFValue),
+    //      (3) Being stuck in an infinite loop
+
+    if (timeRange.StartTime > timeRange.EndTime)
+    {
+        throw new ArgumentException("Requested AFTimeRange must be in time-ascending order.");
+    }
+
+    pageSize = ClampPageSize(pageSize);
+
+    AFTime nextStartTime = timeRange.StartTime;
+    int skipCount = 0;
+    bool hasMoreData = true;
+
+    while (hasMoreData)
+    {
+        AFTimeRange pageTimeRange = new AFTimeRange(nextStartTime, timeRange.EndTime);
+
+        AFValues values = tag.RecordedValues(pageTimeRange, AFBoundaryType.Inside, filterExpression: null, includeFilteredValues: false, maxCount: pageSize);
+
+        hasMoreData = values.Count >= pageSize;
+
+        if (values.Count == 0)
+        {
+            yield break;
+        }
+        else
+        {
+            for (int i = skipCount; i < values.Count; i++)
+            {
+                yield return values[i];
+            }
+        }
+
+        if (hasMoreData)
+        {
+            CheckBottomOfPage(values, out nextStartTime, out skipCount);
+
+            // There is an theoretical edge case where someone could have PageSize number of values at the
+            // same event in their PI Data Archive, in which case an infinite loop would occur.  
+            // As infinitesimal as this edge case would be, we will nonetheless detect it to so we
+            // prevent an infinite loop.  And the best course of action is to throw an exception.
+            // Let's be honest here, if someone has over 50_000 or more multiple values at one timestamp,
+            // they have a WHOLE lot more problems that are far more important than the need to fetch large 
+            // amounts of recorded values.
+            if (nextStartTime == pageTimeRange.StartTime)
+            {
+                // any better message or warning to pass along?
+                throw new Exception("Too many values for the same timestamp.  You may try a larger pageSize, but you have serious issues with your PI Data Archive that should be corrected before you continue.");
+            }
+        }
+    }
+}
+
+// Read blog further below to add CheckBottomOfPage method
+
+private static int ClampPageSize(int pageSize)
+{
+    if (pageSize == 0)
+        return DefaultPageSize;
+    if (pageSize < MinimumPageSize || pageSize > MaximumPageSize)
+        throw new ArgumentOutOfRangeException(nameof(pageSize), $"Must be between {MinimumPageSize} and {MaximumPageSize} inclusively.");
+    return pageSize;
+}
+
+
+
+Lastly, we add one more method to the class (or Module in VB). The most critical part is checking the bottom for the current chunk to adjust the StartTime for the next chunk.
+
+private static void CheckBottomOfPage(IList<AFValue> values, out AFTime lastTimestamp, out int skipCount)
+{
+    int lastIndex = values.Count - 1;
+
+    if (lastIndex < 0)
+    {
+        skipCount = 0;
+        lastTimestamp = AFTime.MaxValue;
+        return;
+    }
+
+    skipCount = 1;
+    lastTimestamp = values[lastIndex].Timestamp;
+    for (int i = lastIndex - 1; i >= 0; --i)
+    {
+        if (values[i].Timestamp == lastTimestamp)
+        {
+            ++skipCount;
+        }
+        else
+        {
+            break;
+        }
+    }
+}
+
+
+A brief aside: what's in a name? When I created this method 2 years ago, I named it GetLargeRecordedValues to emphasize it was primarily intended for a huge amount of values being retrieved. However, the streaming nature of the method could work just was well for values above a quarter-of-million but less than 1.5 million. In that case, you may consider appropriately renaming the method to GetStreamingRecordedValues. When the framework supports async streaming in the future, this method could then have a GetStreamingRecordedValuesAsync counterpart.
+
+
+VB.NET Sample Implementation
+
+' Where VB.NET does things differently than C#
+'
+' Iterators in VB.NET and the use of Yield
+' https://docs.microsoft.com/en-us/dotnet/visual-basic/programming-guide/concepts/iterators
+'
+' Extension Methods in VB.NET
+' https://docs.microsoft.com/en-us/dotnet/visual-basic/programming-guide/language-features/procedures/extension-methods
+
+
+    Public Const MinimumPageSize As Integer = 10_000
+    Public Const DefaultPageSize As Integer = 50_000
+    Public Const MaximumPageSize As Integer = 250_000
+
+    ''' <summary>
+    ''' Returns an enumerable collection of compressed of compressed values for the requested time range from the PI Data Archive.
+    ''' The final count of returned values may be greater than ArcMaxCollect.  This method would be used when you require
+    ''' retrieving millions of values.
+    ''' </summary>
+    ''' <param name="tag"></param>
+    ''' <param name="timeRange">Must be in time-ascending order</param>
+    ''' <param name="pageSize">Default is 50K.  Minimum is 10K.  Maximum is 250K.</param>
+    ''' <returns></returns>
+    <System.Runtime.CompilerServices.Extension()>
+    Public Iterator Function GetLargeRecordedValues(tag As PIPoint, timeRange As AFTimeRange, Optional pageSize As Integer = 0) As IEnumerable(Of AFValue)
+        ' There are several issues at play here.  For one, we want decent performance but the biggest concern
+        ' is we want ALL the recorded values within a requested time range, even if the value count exceeds
+        ' ArcMaxCollect. There are 3 cardinal sins to avoid:
+        '      (1) Neglecting to send an archived value within the time range,
+        '      (2) Sending a value twice (here a value is a more specific instance than just an AFValue),
+        '      (3) Being stuck in an infinite loop
+
+        If timeRange.StartTime > timeRange.EndTime Then
+            Throw New ArgumentException("Requested AFTimeRange must be in time-ascending order.")
+        End If
+
+        pageSize = ClampPageSize(pageSize)
+
+        Dim nextStartTime As AFTime = timeRange.StartTime
+        Dim skipCount As Integer = 0
+        Dim hasMoreData As Boolean = True
+
+        While hasMoreData
+            Dim pageTimeRange As AFTimeRange = New AFTimeRange(nextStartTime, timeRange.EndTime)
+
+            Dim values As AFValues = tag.RecordedValues(pageTimeRange, AFBoundaryType.Inside, filterExpression:=Nothing, includeFilteredValues:=False, maxCount:=pageSize)
+
+            hasMoreData = values.Count >= pageSize
+
+            If values.Count = 0 Then
+                Exit Function
+            Else
+                For i As Integer = skipCount To values.Count - 1
+                    Yield values(i)
+                Next
+            End If
+
+            If hasMoreData Then
+                CheckBottomOfPage(values, nextStartTime, skipCount)
+
+                ' There is an theoretical edge case where someone could have PageSize values at the
+                ' same event in their PI Data Archive, in which case an infinite loop would occur.  
+                ' As infinitesimal as this edge case would be, we will nonetheless detect it to so we
+                ' prevent an infinite loop.  And the best course of action is to throw an exception.
+                ' Let's be honest here, if someone has over 50_000 or more multiple values at one timestamp,
+                ' they have a WHOLE lot more problems that are far more important than the need to fetch large 
+                ' amounts of recorded values.
+                If nextStartTime = pageTimeRange.StartTime Then
+                    ' any better message or warning to pass along?
+                    Throw New Exception("Too many values for the same timestamp.  You may try a larger pageSize, but you have serious issues with your PI Data Archive that should be corrected before you continue.")
+                End If
+            End If
+
+        End While
+
+    End Function
+
+    Private Sub CheckBottomOfPage(values As IList(Of AFValue), ByRef lastTimestamp As AFTime, ByRef skipCount As Integer)
+        Dim lastIndex As Integer = values.Count - 1
+
+        If lastIndex < 0 Then
+            skipCount = 0
+            lastTimestamp = AFTime.MaxValue
+            Return
+        End If
+
+        skipCount = 1
+        lastTimestamp = values(lastIndex).Timestamp
+        For i As Integer = lastIndex - 1 To 0 Step -1
+            If values(i).Timestamp = lastTimestamp Then
+                skipCount += 1
+            Else
+                Exit For
+            End If
+        Next
+
+    End Sub
+
+    Private Function ClampPageSize(pageSize As Integer) As Integer
+        If pageSize = 0 Then Return DefaultPageSize
+        If pageSize < MinimumPageSize OrElse pageSize > MaximumPageSize Then
+            Throw New ArgumentOutOfRangeException(NameOf(pageSize), $"Must be between {MinimumPageSize} and {MaximumPageSize} inclusively.")
+        End If
+        Return pageSize
+    End Function
+
+
+Limitations
+
+The good news is that by and large this custom method achieves our goal of returning all the archived values in a requested time range, just like RecordedValues. The bad news is there are a few exceptions of which to be aware.
+
+While RecordedValues allows for the StartTime to occur after EndTime, in which case the values are sent in descending order, this custom method does not allow that. If you need this, then by all means feel free to change the code to fit your needs.
+
+If someone is modifying the values of the tag and time range while you are retrieving data, this method may get confused and send the wrong data, or even send data more than once. You could argue this is an inherent weakness with this method, but I would suggest you really should not be retrieving data for a tag when someone else is adding or deleting values for that same tag.
+
+This method streams using IEnumerable<AFValue>. It does not work for bulk calls, such as with a PIPointList. Again, the thought is if any given tag has extremely dense, you are best to focus on processing one tag a time.
+
+You cannot use the method asynchronously. Could this be changed? What this would require is something called async streaming, which is not supported in the .NET Framework with AF 2.10.5 or earlier. This may one day be a feature available in C# 8.0, which may support async streams via something like an IAsyncEnumerable<AFValue> object.
+
+I have no plans to change the code with C# 8.0, and am hesitant to do so. The custom method nicely addresses a specific problem: one tag with a huge amount of data. It is a decent solution to that problem if you keep the problem space limited to one tag at a time. What if you have 100 dense tags you wish to work with? You really should be aware of the memory burden you would be putting on the client PC. Again, for such dense tags, it is best to fully work on one tag at a time.
+
+If after reading this you feel GetLargeRecordedValues does not fit your needs, you may want to re-consider a PI Integrator.
+
+Performance, Method Signature, and Things NOT to do
+How well does it perform? Besides not throwing an exception for many millions of values, you may find chunking helps your application run faster depending upon what else the application is doing. If you were hoping to wait until you read all 5 million value before attempting to do anything else with the data, then it might be slower and would really a memory hog. That’s why you should not use a LINQ extension method of ToList() or ToArray(). Really you would avoid any of the LINQ extension methods for streaming the values in chunks. And let’s not forget that reading 5 million values takes some time to process period.
+
+But if your application was doing something like reading values and writing them to a text file, then you may find your overall application running faster if you just iterate over the streaming pages of values and write to file – as the values are being streamed. Rather than max out your memory while waiting for all 5 million values to be stored in a local variable, instead you would read-a-little and write-a-little repeatedly with a chunk.
+
+Note that the output type of IEnumerable<AFValue>, which is an ideal fit for streaming. You just keep reading each incoming AFValue and do something with it, such as write to file. Your code does not need to be concerned with the implementation details of the chunking, or where one chunk ends and another begins.
+
+The Burden of Free Code Samples
+To repeat, the code samples are offered as open-source learning example, hence the long explanation herein. I urge you once again to thoroughly read the license. But it also means that you are free to modify and extend the code. If you think there is something about this code that can be improved, you are encouraged to change it and offer your modifications back to the open-source community.
+
+Though it is a learning example, can it be used for your production code? OSIsoft has no way to confirm that for you. Only YOU know if this code can work for your production environment, and that would only be after you’ve thoroughly read the code, truly understand how it works, understand what your custom application wants to do with it, and most importantly of all, that you have thoroughly tested the code for all of your possible scenarios.  That is the burden of accepting an AS IS license.
+
+With that said, I hope you learned something here. Good luck!
+
