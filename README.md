@@ -9,7 +9,7 @@ The compiled application and an installer can be found at https://drive.google.c
 
 ## Overview
 
-If you want to download 100,000+ tags/attributes and 50+ GB of data from PI Historian over a VPN connection, in one run, on a laptop, this application will support it. It can cope with recorded values, interpolated values, is fairly fault-tolerant, and has a GUI.
+If you want to download 100,000+ tags/attributes and 50+ GB of data from PI Historian over a VPN connection, in one run, on a laptop, this application will support it. It can cope with recorded values, interpolated values, is fairly fault-tolerant (including a corrupted archive), and has a GUI.
 
 Four use cases:
 
@@ -33,12 +33,12 @@ Features:
 Further Features:
 
 * Asking for interpolated data from time ranges with no recorded values is really slow on the PI Server, so if interpolated values are requested, the application conducts an initial query to retrieve the first few recorded values for the tag after the requested start date, and starts the interpolated query from the first data date onwards, not the date requested in the input file.
-* Does not use a single bulk RPC call, as it is harder to gracefully recover from timeout and corrupted archive exceptions using this approach.
+* Does not use bulk RPC calls, as it is harder to gracefully recover from timeout and corrupted archive exceptions using this approach. It is optimized for reliably retrieving very large tag and data volumes, and intentionally trades speed and LOC for small to medium queries to achieve this.
 
 Notes:
 
 * Only downloads data for an attribute if the attribute is backed by a PIPoint.
-* Correctly handles all of the issues described in [this pisquare post](https://pisquare.osisoft.com/thread/40099-deep-dive-explaining-custom-getlargerecordedvalues-as-a-workaround-to-arcmaxcollect) except the pathological case where there are more points at the exact same timestamp than the page size, which is highly unlikely.
+* Correctly handles all of the issues described in [this pisquare post](https://pisquare.osisoft.com/thread/40099-deep-dive-explaining-custom-getlargerecordedvalues-as-a-workaround-to-arcmaxcollect) except the pathological case where there are more points at the exact same timestamp than the page size, which is highly unlikely. This post is saved as a text file in this repository in case of link rot.
 * This can probably put enough load on a PI Server to negatively impact other things the server should be doing. Use with care. 
 
 ## Command line interface
