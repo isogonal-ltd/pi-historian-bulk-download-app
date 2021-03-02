@@ -9,7 +9,9 @@ The compiled application and an installer can be found at https://drive.google.c
 
 ## Overview
 
-If you want to download 100,000+ tags/attributes and 50+ GB of data from PI Historian over a VPN connection, in one run, on a laptop, this application will support it. It can cope with recorded values, interpolated values, is fairly fault-tolerant (including a corrupted archive), and has a GUI.
+PI Historian is a scalable time-series database used worldwide to store SCADA and other process data by large industrial plants. Querying small volumes of data for operational reasons is commonplace but retrieving large volumes of data for historical analysis is often not a supported use-case in most organizations.
+
+This software enables downloading 100,000+ tags/attributes and/or 50+ GB of data from PI Historian over a slow connection on a commodity laptop. It can cope with recorded values, interpolated values, is fault-tolerant (including a corrupted archive), and has command-line or GUI entry points.
 
 Four use cases:
 
@@ -32,7 +34,7 @@ Features:
 
 Further Features:
 
-* Asking for interpolated data from time ranges with no recorded values is really slow on the PI Server, so if interpolated values are requested, the application conducts an initial query to retrieve the first few recorded values for the tag after the requested start date, and starts the interpolated query from the first data date onwards, not the date requested in the input file.
+* Asking for interpolated data from time ranges with no recorded values is *really* slow on the PI Server (c. 2019-2020), so if interpolated values are requested, the application conducts an initial query to retrieve the first few recorded values for the tag after the requested start date, and starts the interpolated query from the first data date onwards, not the date requested in the input file.
 * Does not use bulk RPC calls, as it is harder to gracefully recover from timeout and corrupted archive exceptions using this approach. It is optimized for reliably retrieving large numbers of tags and large data volumes with minimal user intervention. For small and medium-sized queries, this approach will definitely still work but you could also use a single bulk call instead.
 
 Notes:
