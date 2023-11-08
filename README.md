@@ -3,15 +3,15 @@
 [Isogonal](https://isogonal.co.nz)  
 contact@isogonal.co.nz
 
+This software enables downloading 100,000+ tags/attributes and/or 50+ GB of data from PI Historian over a slow connection on a commodity laptop. It can cope with recorded values, interpolated values, is fault-tolerant (including corrupted PI archives), and has command-line or GUI entry points.
+
 This is a community project, and not provided or supported by OSISoft in any way. It was developed to download data for an internal project and is open-sourced in the hope it will be useful to someone else. Please get in touch at the email above if you have any questions or would like some assisstance.
 
 The compiled application and an installer can be found at https://drive.google.com/drive/folders/1JmQUtwVB1kHkif1wIggz6TNNXNrWrl4z?usp=sharing 
 
 ## Overview
 
-PI Historian is a scalable time-series database used worldwide to store SCADA and other process data by large industrial plants. Querying small volumes of data for operational reasons is commonplace but retrieving large volumes of data for historical analysis is often not a supported use-case in most organizations.
-
-This software enables downloading 100,000+ tags/attributes and/or 50+ GB of data from PI Historian over a slow connection on a commodity laptop. It can cope with recorded values, interpolated values, is fault-tolerant (including a corrupted archive), and has command-line or GUI entry points.
+PI Historian is a scalable time-series database used worldwide to store SCADA and other process data by large industrial plants. Querying small volumes of data for operational reasons is commonplace but retrieving large volumes of data for historical analysis is often not a supported use-case in most organizations (note from 2023-11-08: this project is from 2019 and now things like bulk Snowflake exports are potentially becoming possible)
 
 Four use cases:
 
